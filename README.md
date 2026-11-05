@@ -11,4 +11,4 @@ better than a pomodoro timer for Windows and Android devices
 
 pro tip... android system web view required for android apk to work like bank apps   
 
-pro tip... idk notifications dont pop on everything yet but sound seems to work  <3 </3 
+pro tip... notifications dont work on all my shit but allowing it with that code for notifications allows the sound to play even in the background so shit w.i.p but still already useful and cool if you have multiple devices and just set one to be your pomodoro timer using TASKTIMER
