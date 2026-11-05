@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iOS Style Task Timer</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #ffffff;
+            color: #f8fafc;
+            overflow-x: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        /* Main Container */
+        #app {
+            width: 100%;
+            max-width: 400px;
+            background-color: black;
+            border: 1px solid #1e293b;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 420px;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .flex {
+            display: flex !important;
+        }
+        /* Home View Styles */
+        #home-view {
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        .task-timer-title {
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: #6eb76e;
+            margin-bottom: 2rem;
+            letter-spacing: 0.05em;
+        }
+        #open-modal-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #2563eb, #4f46e5);
+            color: white;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            transition: transform 0.2s ease;
+        }
+        #open-modal-btn:hover {
+            transform: scale(1.05);
+        }
+        #open-modal-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Timer View Styles */
+        #timer-view {
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            height: 100%;
+            position: relative;
+            padding: 10px 0;
+        }
+        #cancel-timer-btn {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: rgba(30, 41, 59, 0.8);
+            color: #94a3b8;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            transition: background 0.2s, color 0.2s;
+            z-index: 10;
+        }
+        #cancel-timer-btn:hover {
+            background: #1e293b;
+            color: white;
+        }
+        .timer-header {
+            margin-top: 10px;
+            margin-bottom: 20px;
+            padding: 0 40px;
+            text-align: center;
+        }
+        #display-task-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 260px;
+        }
+        .timer-subtitle {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #60a5fa;
+            font-weight: 600;
+        }
+        .timer-circle-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 16px 0;
+            position: relative;
+            width: 220px;
+            height: 220px;
+        }
+        /* SVG Progress Ring Setup for 80% Arc */
+        .progress-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 220px;
+            height: 220px;
+            transform: rotate(126deg); /* Rotate to center the 20% gap at the bottom */
+            pointer-events: none;
+        }
+        .progress-ring__circle-bg {
+            stroke: #1e293b;
+            stroke-width: 4;
+            fill: rgba(15, 23, 42, 0.4);
+            stroke-linecap: round;
+        }
+        .progress-ring__circle {
+            stroke: #3b82f6;
+            stroke-width: 4;
+            fill: none;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.3s linear;
+        }
+        .timer-circle {
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            z-index: 2;
+        }
+        #time-remaining {
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            color: white;
+            font-family: monospace;
+        }
+        #time-total-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        .timer-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        #pause-resume-btn {
+            padding: 10px 24px;
+            border-radius: 9999px;
+            background: #1e293b;
+            color: #e2e8f0;
+            font-weight: 500;
+            font-size: 0.875rem;
+            border: 1px solid #334155;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #pause-resume-btn:hover {
+            background: #334155;
+        }
+
+        /* Alarm Ended Overlay Styles */
+        #alarm-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            border-radius: 24px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            z-index: 40;
+            text-align: center;
+        }
+        .alarm-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #ef4444;
+            margin-bottom: 8px;
+            letter-spacing: 0.05em;
+        }
+        .alarm-subtitle {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            margin-bottom: 24px;
+        }
+        #dismiss-alarm-btn {
+            width: 100%;
+            max-width: 200px;
+            padding: 14px;
+            border-radius: 12px;
+            background: #ef4444;
+            color: white;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.4);
+            transition: background 0.2s, transform 0.1s;
+            font-size: 1rem;
+        }
+        #dismiss-alarm-btn:hover {
+            background: #dc2626;
+        }
+        #dismiss-alarm-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Modal Dialog */
+        #task-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 50;
+        }
+        #modal-content {
+            background-color: white;
+            border: 1px solid #1e293b;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 360px;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-title {
+            font-size: 1.125rem;
+            font-weight: bold;
+            color: blue;
+        }
+        #close-modal-btn {
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 1.125rem;
+            cursor: pointer;
+        }
+        #close-modal-btn:hover {
+            color: #0f172a;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+        }
+        #task-name-input {
+            width: 100%;
+            background-color: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: black;
+            font-size: 0.875rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        #task-name-input:focus {
+            border-color: #2563eb;
+        }
+
+        /* iOS Picker Styles */
+        .picker-container {
+            position: relative;
+            height: 180px;
+            overflow: hidden;
+            background-color: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 16px;
+        }
+        .picker-scroll {
+            height: 100%;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .picker-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .picker-item {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            scroll-snap-align: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #94a3b8;
+            transition: color 0.15s ease;
+        }
+        .picker-highlight {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            right: 0;
+            height: 60px;
+            border-top: 2px solid rgba(37, 99, 235, 0.4);
+            border-bottom: 2px solid rgba(37, 99, 235, 0.4);
+            pointer-events: none;
+            background: rgba(37, 99, 235, 0.05);
+        }
+        #start-task-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            background: #2563eb;
+            color: white;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+        #start-task-btn:hover {
+            background: #1d4ed8;
+        }
+
+        /* Notification Toast */
+        #custom-msg {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: #e2e8f0;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .msg-icon-warn { color: #fbbf24; }
+        .msg-icon-success { color: #34d399; }
+    </style>
+</head>
+<body>
+
+    <!-- Main Container -->
+    <div id="app">
+
+        <!-- View 1: Initial Add Button Screen -->
+        <div id="home-view" class="flex">
+            <h1 class="task-timer-title">TASK TIMER</h1>
+            <button id="open-modal-btn">
+                <span>+</span>
+            </button>
+        </div>
+
+        <!-- View 2: Timer Countdown Screen -->
+        <div id="timer-view" class="hidden">
+            <!-- Top Left Cancel 'X' Button -->
+            <button id="cancel-timer-btn" title="Cancel Timer">✕</button>
+
+            <!-- Task Name Header -->
+            <div class="timer-header">
+                <h2 id="display-task-name">Task Name</h2>
+                <span class="timer-subtitle">&lt;3</span>
+            </div>
+
+            <!-- Countdown Display Circle with 80% Arc SVG Progress Ring Animation -->
+            <div class="timer-circle-container">
+                <svg class="progress-ring" viewBox="0 0 220 220">
+                    <!-- Background Circle track with 80% arc length -->
+                    <circle id="progress-circle-bg" class="progress-ring__circle-bg" cx="110" cy="110" r="100" />
+                    <!-- Animated Progress Bar Circle covering 80% arc -->
+                    <circle id="progress-circle" class="progress-ring__circle" cx="110" cy="110" r="100" />
+                </svg>
+                <div class="timer-circle">
+                    <div id="time-remaining">00:00</div>
+                    <div id="time-total-label">Remaining</div>
+                </div>
+            </div>
+
+            <!-- Timer Action Controls -->
+            <div class="timer-controls">
+                <button id="pause-resume-btn">Pause</button>
+            </div>
+
+            <!-- Alarm Ringing Overlay (Appears when time hits 00:00) -->
+            <div id="alarm-overlay">
+                <div class="alarm-title">Ɛ></div>
+                <div id="alarm-task-label" class="alarm-subtitle">Task Complete</div>
+                <button id="dismiss-alarm-btn">Dismiss</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal Dialog for Task Name & iOS Picker -->
+    <div id="task-modal">
+        <div id="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">TASK TIMER</h3>
+                <button id="close-modal-btn">✕</button>
+            </div>
+
+            <!-- Task Name Input -->
+            <div class="input-group">
+                <label class="input-label">TITLE</label>
+                <input type="text" id="task-name-input" placeholder="enter task title here">
+            </div>
+
+            <!-- iOS Scroll Duration Picker (Up to 999 mins) -->
+            <div class="input-group" style="margin-bottom: 24px;">
+                <label class="input-label">Countdown Duration</label>
+                <div class="picker-container">
+                    <div class="picker-highlight"></div>
+                    <div id="picker-scroll" class="picker-scroll">
+                        <!-- Dynamic items generated via script -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Action Button -->
+            <button id="start-task-btn">
+                <span>Begin</span>
+                <span>→</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Notification Message Box -->
+    <div id="custom-msg">
+        <span id="msg-icon">⚠️</span>
+        <span id="msg-text">Notification message</span>
+    </div>
+
+    <!-- Hidden Audio Element for alarm.wav (loop enabled) -->
+    <audio id="alarm-audio" src="alarm.wav" preload="auto" loop></audio>
+
+    <script>
+        // Haptic Feedback Helper Function (Android vibration with Apple-style crisp ticks)
+        function vibrateClick(type = 'light') {
+            if ('vibrate' in navigator) {
+                try {
+                    if (type === 'wheel') {
+                        // Crisp, tight tick for wheel scrolling (resembling Apple click wheel haptics amplified for Android)
+                        navigator.vibrate(18);
+                    } else if (type === 'heavy') {
+                        // Stronger feedback for alarms or primary actions
+                        navigator.vibrate([40, 30, 40]);
+                    } else {
+                        // Standard button tap haptic click
+                        navigator.vibrate(25);
+                    }
+                } catch (e) {
+                    // Ignore if vibration API is restricted/unsupported by browser policy
+                }
+            }
+        }
+
+        // Application State Variables
+        let selectedDurationMinutes = 25; 
+        let timerInterval = null;
+        let totalDurationSeconds = 0;
+        let totalSecondsRemaining = 0;
+        let isPaused = false;
+        let activeTaskName = "";
+        let timerRunningState = false;
+        let timerEndTime = null; 
+        let isAlarmRinging = false;
+        let lastVibratedValue = null;
+
+        // SVG Progress Circle Config for 80% Arc (0.8 * Circumference)
+        const circleRadius = 100;
+        const fullCircumference = 2 * Math.PI * circleRadius;
+        const arcLength = fullCircumference * 0.80; // 80% of circle arc
+
+        // DOM Elements
+        const homeView = document.getElementById('home-view');
+        const timerView = document.getElementById('timer-view');
+        const openModalBtn = document.getElementById('open-modal-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const taskModal = document.getElementById('task-modal');
+        const modalContent = document.getElementById('modal-content');
+        const taskNameInput = document.getElementById('task-name-input');
+        const startTaskBtn = document.getElementById('start-task-btn');
+        const cancelTimerBtn = document.getElementById('cancel-timer-btn');
+        const displayTaskName = document.getElementById('display-task-name');
+        const timeRemainingEl = document.getElementById('time-remaining');
+        const pauseResumeBtn = document.getElementById('pause-resume-btn');
+        const pickerScroll = document.getElementById('picker-scroll');
+        const customMsg = document.getElementById('custom-msg');
+        const msgText = document.getElementById('msg-text');
+        const msgIcon = document.getElementById('msg-icon');
+        const progressCircle = document.getElementById('progress-circle');
+        const progressCircleBg = document.getElementById('progress-circle-bg');
+        const alarmOverlay = document.getElementById('alarm-overlay');
+        const alarmTaskLabel = document.getElementById('alarm-task-label');
+        const dismissAlarmBtn = document.getElementById('dismiss-alarm-btn');
+        const alarmAudio = document.getElementById('alarm-audio');
+
+        // Setup SVG dash properties for both background track and progress arc (80% arc with 20% gap)
+        progressCircleBg.style.strokeDasharray = `${arcLength} ${fullCircumference}`;
+        progressCircle.style.strokeDasharray = `${arcLength} ${fullCircumference}`;
+        progressCircle.style.strokeDashoffset = '0';
+
+        function setProgress(percent) {
+            const visibleLength = (percent / 100) * arcLength;
+            const offset = arcLength - visibleLength;
+            progressCircle.style.strokeDashoffset = offset;
+        }
+
+        // Save state to localStorage
+        function saveState() {
+            const state = {
+                selectedDurationMinutes,
+                activeTaskName,
+                timerRunningState,
+                totalDurationSeconds,
+                totalSecondsRemaining,
+                isPaused,
+                timerEndTime,
+                isAlarmRinging
+            };
+            localStorage.setItem('ios_task_timer_state', JSON.stringify(state));
+        }
+
+        // Load state from localStorage
+        function loadState() {
+            const saved = localStorage.getItem('ios_task_timer_state');
+            if (saved) {
+                try {
+                    const state = JSON.parse(saved);
+                    selectedDurationMinutes = state.selectedDurationMinutes || 25;
+                    activeTaskName = state.activeTaskName || "";
+                    timerRunningState = state.timerRunningState || false;
+                    totalDurationSeconds = state.totalDurationSeconds || 0;
+                    totalSecondsRemaining = state.totalSecondsRemaining || 0;
+                    isPaused = state.isPaused || false;
+                    timerEndTime = state.timerEndTime || null;
+                    isAlarmRinging = state.isAlarmRinging || false;
+                } catch (e) {
+                    console.error("Failed to parse saved state", e);
+                }
+            }
+        }
+
+        // Show custom notification message box
+        function showNotification(message, isError = true) {
+            msgText.textContent = message;
+            if (isError) {
+                msgIcon.textContent = "⚠️";
+                msgIcon.className = "msg-icon-warn";
+            } else {
+                msgIcon.textContent = "✅";
+                msgIcon.className = "msg-icon-success";
+            }
+            customMsg.style.transform = "translateY(0)";
+            customMsg.style.opacity = "1";
+            setTimeout(() => {
+                customMsg.style.transform = "translateY(80px)";
+                customMsg.style.opacity = "0";
+            }, 3000);
+        }
+
+        // Initialize iOS Style Duration Picker (1 to 999 mins)
+        function initPicker() {
+            let optionsHTML = `
+                <div class="picker-item" style="color: transparent;">0</div>
+                <div class="picker-item" style="color: transparent;">0</div>
+            `;
+            
+            for (let i = 1; i <= 999; i++) {
+                optionsHTML += `<div class="picker-item" data-value="${i}">${i} min</div>`;
+            }
+
+            optionsHTML += `
+                <div class="picker-item" style="color: transparent;">0</div>
+                <div class="picker-item" style="color: transparent;">0</div>
+            `;
+            
+            pickerScroll.innerHTML = optionsHTML;
+
+            const targetItem = pickerScroll.querySelector(`[data-value="${selectedDurationMinutes}"]`) || pickerScroll.querySelector('[data-value="25"]');
+            if (targetItem) {
+                pickerScroll.scrollTop = targetItem.offsetTop - 60;
+            }
+
+            updatePickerHighlightColors(targetItem);
+            lastVibratedValue = selectedDurationMinutes;
+
+            let scrollTimeout;
+            pickerScroll.addEventListener('scroll', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    const items = pickerScroll.querySelectorAll('.picker-item[data-value]');
+                    const containerCenter = pickerScroll.scrollTop + (pickerScroll.clientHeight / 2);
+                    
+                    let closestItem = null;
+                    let minDistance = Infinity;
+
+                    items.forEach(item => {
+                        const itemCenter = item.offsetTop + (item.clientHeight / 2);
+                        const distance = Math.abs(containerCenter - itemCenter);
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            closestItem = item;
+                        }
+                    });
+
+                    if (closestItem) {
+                        items.forEach(i => i.style.color = '#94a3b8');
+                        closestItem.style.color = '#000000';
+                        selectedDurationMinutes = parseInt(closestItem.getAttribute('data-value'), 10);
+                        
+                        // Trigger Apple-ish click wheel vibration haptic if value changed
+                        if (selectedDurationMinutes !== lastVibratedValue) {
+                            vibrateClick('wheel');
+                            lastVibratedValue = selectedDurationMinutes;
+                        }
+
+                        saveState();
+                    }
+                }, 50);
+            });
+        }
+
+        function updatePickerHighlightColors(selectedItem) {
+            const items = pickerScroll.querySelectorAll('.picker-item[data-value]');
+            items.forEach(i => i.style.color = '#94a3b8');
+            if (selectedItem) {
+                selectedItem.style.color = '#000000';
+            }
+        }
+
+        // Modal Controls
+        openModalBtn.addEventListener('click', () => {
+            vibrateClick('light');
+            taskModal.style.display = 'flex';
+            setTimeout(() => {
+                modalContent.style.transform = 'scale(1)';
+            }, 10);
+            taskNameInput.value = activeTaskName;
+            taskNameInput.focus();
+        });
+
+        function closeModal() {
+            modalContent.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                taskModal.style.display = 'none';
+            }, 200);
+        }
+
+        closeModalBtn.addEventListener('click', () => {
+            vibrateClick('light');
+            closeModal();
+        });
+
+        taskModal.addEventListener('click', (e) => {
+            if (e.target === taskModal) {
+                vibrateClick('light');
+                closeModal();
+            }
+        });
+
+        // Start Task Button Action
+        startTaskBtn.addEventListener('click', () => {
+            vibrateClick('light');
+            const taskName = taskNameInput.value.trim();
+            if (!taskName) {
+                showNotification('Please enter a task title', true);
+                taskNameInput.focus();
+                return;
+            }
+
+            activeTaskName = taskName;
+            closeModal();
+
+            displayTaskName.textContent = activeTaskName;
+            totalDurationSeconds = selectedDurationMinutes * 60;
+            totalSecondsRemaining = totalDurationSeconds;
+            isPaused = false;
+            isAlarmRinging = false;
+            pauseResumeBtn.textContent = "Pause";
+            timerRunningState = true;
+            timerEndTime = Date.now() + (totalSecondsRemaining * 1000);
+            saveState();
+
+            homeView.classList.remove('flex');
+            homeView.classList.add('hidden');
+            timerView.classList.remove('hidden');
+            timerView.classList.add('flex');
+            alarmOverlay.style.display = 'none';
+
+            startCountdown();
+        });
+
+        // Countdown Logic
+        function startCountdown() {
+            updateTimerDisplay();
+            if (timerInterval) clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                if (!isPaused && !isAlarmRinging) {
+                    if (timerEndTime) {
+                        const now = Date.now();
+                        totalSecondsRemaining = Math.max(0, Math.round((timerEndTime - now) / 1000));
+                    }
+
+                    if (totalSecondsRemaining > 0) {
+                        updateTimerDisplay();
+                        saveState();
+                    } else {
+                        clearInterval(timerInterval);
+                        setProgress(0);
+                        triggerAlarm();
+                    }
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(totalSecondsRemaining / 60);
+            const secs = totalSecondsRemaining % 60;
+            timeRemainingEl.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+            const percent = totalDurationSeconds > 0 ? (totalSecondsRemaining / totalDurationSeconds) * 100 : 0;
+            setProgress(percent);
+        }
+
+        // Trigger Alarm Loop
+        function triggerAlarm() {
+            isAlarmRinging = true;
+            timerRunningState = false;
+            alarmTaskLabel.textContent = activeTaskName || "Task Complete";
+            alarmOverlay.style.display = 'flex';
+            vibrateClick('heavy');
+            saveState();
+
+            // Play alarm.wav on loop
+            alarmAudio.currentTime = 0;
+            alarmAudio.play().catch(err => {
+                console.log("Audio playback prevented or failed: ", err);
+            });
+        }
+
+        // Dismiss Alarm
+        dismissAlarmBtn.addEventListener('click', () => {
+            vibrateClick('heavy');
+            // Stop audio
+            alarmAudio.pause();
+            alarmAudio.currentTime = 0;
+
+            isAlarmRinging = false;
+            alarmOverlay.style.display = 'none';
+            resetToHome();
+        });
+
+        // Pause / Resume Toggle
+        pauseResumeBtn.addEventListener('click', () => {
+            if (isAlarmRinging) return;
+            vibrateClick('light');
+            isPaused = !isPaused;
+            pauseResumeBtn.textContent = isPaused ? "Resume" : "Pause";
+            if (isPaused) {
+                timerEndTime = null;
+            } else {
+                timerEndTime = Date.now() + (totalSecondsRemaining * 1000);
+            }
+            saveState();
+        });
+
+        // Cancel / Reset back to initial button screen
+        function resetToHome() {
+            if (timerInterval) clearInterval(timerInterval);
+            
+            // Ensure audio stops if canceling mid-alarm
+            alarmAudio.pause();
+            alarmAudio.currentTime = 0;
+
+            timerRunningState = false;
+            activeTaskName = "";
+            totalDurationSeconds = 0;
+            totalSecondsRemaining = 0;
+            isPaused = false;
+            isAlarmRinging = false;
+            timerEndTime = null;
+            setProgress(0);
+            alarmOverlay.style.display = 'none';
+            saveState();
+
+            timerView.classList.remove('flex');
+            timerView.classList.add('hidden');
+            homeView.classList.remove('hidden');
+            homeView.classList.add('flex');
+        }
+
+        cancelTimerBtn.addEventListener('click', () => {
+            vibrateClick('light');
+            resetToHome();
+        });
+
+        // Initialization on page load, restoring state if available
+        window.onload = () => {
+            loadState();
+            initPicker();
+
+            if (timerRunningState && totalSecondsRemaining > 0) {
+                if (!isPaused && timerEndTime) {
+                    const now = Date.now();
+                    totalSecondsRemaining = Math.max(0, Math.round((timerEndTime - now) / 1000));
+                }
+
+                if (totalSecondsRemaining > 0) {
+                    displayTaskName.textContent = activeTaskName || "Task Name";
+                    homeView.classList.remove('flex');
+                    homeView.classList.add('hidden');
+                    timerView.classList.remove('hidden');
+                    timerView.classList.add('flex');
+                    alarmOverlay.style.display = 'none';
+                    
+                    if (isPaused) {
+                        pauseResumeBtn.textContent = "Resume";
+                    } else {
+                        timerEndTime = Date.now() + (totalSecondsRemaining * 1000);
+                    }
+                    updateTimerDisplay();
+                    startCountdown();
+                } else {
+                    triggerAlarm();
+                }
+            } else if (isAlarmRinging) {
+                displayTaskName.textContent = activeTaskName || "Task Name";
+                homeView.classList.remove('flex');
+                homeView.classList.add('hidden');
+                timerView.classList.remove('hidden');
+                timerView.classList.add('flex');
+                triggerAlarm();
+            } else {
+                resetToHome();
+            }
+        };
+    </script>
+</body>
+</html>
